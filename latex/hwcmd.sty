@@ -37,6 +37,7 @@
 	\section{#2}
 	\setcounter{section}{\tempc}
 }
+% Reference Triangle
 \NewDocumentCommand{\reftri}{O{#4}O{#5}O{#6}mmm}{
 	\begin{center}
 		\begin{tikzpicture}[scale={3/#6}]
@@ -73,7 +74,7 @@
 	\end{center}
 }
 
-
+% Trigonometric Triangle
 \newcommand{\trigtri}[6]{
 		\begin{center}
 			\begin{tikzpicture}[scale={3/#3}]
@@ -124,6 +125,14 @@
 \seq_new:N \l__scribe_tbl_row_seq
 \int_new:N \l__scribe_tbl_cols_int
 
+\renewenvironment{leftbar}[2][\hsize] {
+	\def\FrameCommand{
+		{\color{#2}\rule{ 0.5pt }{\baselineskip*4}}
+		\hspace{5pt}
+	}
+	\MakeFramed{\hsize#1\advance\hsize-\wdith\FrameRestore}
+}
+{\endMakeFramed}
 \cs_new_protected:Nn \scribe_tbl:n {
     \seq_set_split:Nnn \l__scribe_tbl_body_seq { \\ } { #1 }
     \seq_pop_right:NN \l__scribe_tbl_body_seq \l_tmpa_tl
@@ -141,4 +150,15 @@
     \\ \hline
     \end{tabular}
 }
+% Dissolve sunit in function
+\__nmc_fill_class:nn{ \sunit } { \__nmc_fpify_absorb_m: \__nmc_delim_absorb_i: }
+
+% Make paren and pqty absorb correctly into numerica.
+\seq_set_from_clist:Nn \l_empty_fn_seq {
+	\pqty, \paren
+}
+\cs_set_protected:Npn \__numerica_mapping_function:n #1 { \prop_gput:Nnn \g__nmc_subst_fpfn_prop {#1} {}}
+\seq_map_function:NN \l_empty_fn_seq \__numerica_mapping_function:n
+\seq_map_inline:Nn \l_empty_fn_seq {\prop_gput:Nnn \g__nmc_class_prop {#1} { \__nmc_fpify_unarybrace: \__nmc_delim_unarybrace: } }
+
 \ExplSyntaxOff

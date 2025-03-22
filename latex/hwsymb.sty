@@ -2,7 +2,8 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{hwsymb}[2023/01/01 hwsymb]
 
-\RequirePackage{amsmath, amssymb, amsthm, amscd, graphicx, cancel, xcolor, environ}
+\PassOptionsToPackage{rgb}{xcolor}
+\RequirePackage{amsmath, amssymb, amsthm, amscd, graphicx, cancel, xcolor, environ, pgfkeys, expl3, etoolbox, mathtools}
 
 % new and renewed commands
 \DeclareRobustCommand{\bb}[1]{\mathbb{#1}}
@@ -10,7 +11,29 @@
 \DeclareRobustCommand{\sc}[1]{\textsc{#1}}
 \DeclareMathOperator{\D}{d}
 \renewcommand{\qedsymbol}{$_{\scriptstyle \substack{\sc{quod}\\\sc{erat}\\\sc{dem}\scalebox{0.53}{$\blacksquare$}}}$}
-\newcommand{\question}[2]{\noindent\textbf{#1.} #2}
+% Check if a question has just been asked.
+\newcounter{justquestioned}
+
+\newcommand{\question}[3][0]{%
+\noindent\textbf{#2.} #3%
+\setcounter{justquestioned}{1}
+\stepcounter{questions}%
+\ifnum#1=1\relax
+	\else
+		{\listxadd{\questionslist}{#2}}
+	\fi
+}
+% Newline if a question has just been asked.
+\newcommand{\qprt}[2]{
+	\ifnum\value{justquestioned}=1
+		\\
+		\setcounter{justquestioned}{0}
+	\fi
+% put qprts in boxes so they're aligned.
+\makebox[4ex][c]{\textbf{(#1)}}\space#2
+}
+
+% Colored Box
 \newcommand{\cfbox}[2]{%
     \colorlet{currentcolor}{.}%
     {\color{#1}%
@@ -26,7 +49,7 @@
 \AtBeginDocument{\def\O{\cal{O}}} % Big Oh
 \AtBeginDocument{\def\C{\bb{C}}} % Complex
 \newcommand{\R}{\bb{R}} % Reals
-\newcommand{\Q}{\bb{Q}} % Rationals
+\renewcommand{\Q}{\bb{Q}} % Rationals
 \newcommand{\Z}{\bb{Z}} % Integers
 \newcommand{\N}{\bb{N}} % Naturals
 \renewcommand{\P}{\bb{P}} % Primes
@@ -44,27 +67,29 @@
 \newcommand{\injective}{\hookrightarrow}
 \newcommand{\surjective}{\twoheadrightarrow}
 \newcommand{\bijective}{\hookrightarrow\mathrel{\mspace{-15mu}}\rightarrow}
-\newcommand{\derivative}[2][x]{\frac{\D #2}{\D #1}}
+%\newcommand{\derivative}[2][x]{\frac{\D #2}{\D #1}}
 \newcommand{\ceil}[1]{\left\lceil#1\right\rceil}
 \newcommand{\floor}[1]{\left\lfloor#1\right\rfloor}
 \newcommand{\near}[1]{\left\lfloor#1\right\rceil}
 \newcommand{\arr}[1]{\left\langle#1\right\rangle}
-\newcommand{\paren}[1]{\left(#1\right)}
+%\newcommand{\paren}[1]{\left(#1\right)}
+\let\paren\pqty
 \newcommand{\brk}[1]{\left[#1\right]}
-\newcommand{\abs}[1]{\left|#1\right|}
-\newcommand{\curl}[1]{\left\{#1\right\}}
-\newcommand{\dqf}{\dfrac{-b\pm\sqrt{b^2-4ac}}{2a}}
-\newcommand{\qf}[3]{\dfrac{-(#2)\pm\sqrt{(#2)^2-4(#1)(#3)}}{2(#1)}}
-\newcommand{\qprt}[2]{\textbf{(#1)}\quad#2}
-\newcommand{\dg}{\degree}
-\newcommand{\rvec}[1]{\overrightarrow{#1}}
-\newcommand{\tefrac}[2]{\tfrac{\text{#1}}{\text{#2}}}
-\newcommand{\msq}{\tfrac{\text{m}}{\text{s}^2}}
-\newcommand{\ms}{\tefrac{m}{s}}
+%\newcommand{\abs}[1]{\left|#1\right|}
+\DeclarePairedDelimiter\magn{\lVert}{\rVert} % Magnitude
+\newcommand{\crl}[1]{\left\{#1\right\}}
+\newcommand{\dqf}{\dfrac{-b\pm\sqrt{b^2-4ac}}{2a}} % Demonstrative Quadratic Formula
+\newcommand{\qf}[3]{\dfrac{-(#2)\pm\sqrt{(#2)^2-4(#1)(#3)}}{2(#1)}} % Quadratic Formula
+\newcommand{\rvec}[1]{\overrightarrow{#1}} % Arrow Vector Notation
+\newcommand{\prob}[1]{P\hspace{-.175em}\paren{\text{#1}}} % Probability notation
+% Units
+\newcommand{\dg}{\degree} % Degree
+\newcommand{\tefrac}[2]{\tfrac{\text{#1}}{\text{#2}}} % Weird fraction
+\newcommand{\sunit}{\, \unit}
+\let\lilint\int
+\let\dst\displaystyle
+\renewcommand{\int}{\dst\lilint}
 
-\NewEnviron{qenv}[2]{%
-	\question{#1}{#2}
-	\renewcommand{\qprt}[2]{\hspace*{\parindent}{\textbf{(#1)}\quad#2}}
-	\BODY
-}
-
+\let\eval\nmcEvaluate
+\let\ac\land
+\let\vel\lor
