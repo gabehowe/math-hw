@@ -1,8 +1,12 @@
 import os
 import re
+from pathlib import Path
+
 
 if __name__ == '__main__':
-    files = os.listdir('./')
+    script_path = Path(__file__).resolve()
+    dir = script_path.parent
+    files = os.listdir(dir)
     for i in files:
         if i.endswith('.msnippets'):
             with open(i) as file:

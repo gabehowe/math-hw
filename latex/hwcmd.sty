@@ -17,19 +17,24 @@
 \gdef\@unitname{Question}
 \newcounter{UnitCounter}
 \newcommand{\setunitname}[1]{\gdef\@unitname{#1}}
-% \newcommand{\question}[1][\arabic{UnitCounter}]{%
-%   \Needspace*{8\baselineskip}%
-%   \addvspace{\unitskipamount}%
-%   \def\@currentlabel{#1}%
-%   \ifthenelse{\equal{#1}{\value{UnitCounter}}}{\stepcounter{UnitCounter}}{}%
-%   \setcounter{section}{0}%
-%   \renewcommand{\thesection}{#1.\arabic{section}}%
-%   \renewcommand{\theHsection}{#1.\the\value{section}}%
-%   \addcontentsline{toc}{part}{#1. \@unitname{}}%
-%   \noindent\textbf{\@unitname{} #1. }\ignorespaces%
-% }
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
 
-\AtBeginEnvironment{align}{\setcounter{equation}{0}}
+\NewDocumentCommand{\noeqreset}{}{\def\@noeqreset}
+\AtBeginEnvironment{proof}{
+\ifdefined\@noeqreset
+\else
+\setcounter{equation}{0}
+\fi
+}
+\makeatother
+
+\AtBeginEnvironment{multicols}{\raggedcolumns}
+
+
 \newcommand{\nsection}[2][\value{section}]{
 	\def\tempc{\value{section}}
 	\setcounter{section}{#1}
@@ -38,52 +43,8 @@
 	\setcounter{section}{\tempc}
 }
 % Reference Triangle
-\NewDocumentCommand{\reftri}{O{#4}O{#5}O{#6}mmm}{
-	\begin{center}
-		\begin{tikzpicture}[scale={3/#6}]
-			\draw (0,0) coordinate (c) -- ({#5},0) coordinate (x) -- ({#5},{#4}) coordinate (y) -- cycle;
-			\coordinate (a) at ($(c)!0.5!(x)$);
-			\coordinate (o) at ($(x)!0.5!(y)$);
-			\coordinate (h) at ($(y)!0.5!(c)$);
-
-			\ifnum#5<0
-				\node[left] at (o) {#1};
-			\else
-				\node[right] at (o) {#1};
-			\fi
-
-			\ifnum#4<0 % OAH
-				\node[above] at (a) {#2}; 
-			\else
-				\node[below] at (a) {#2};
-			\fi
-			\ifnum#4<0
-				\ifnum#5<0
-					\node[below right] at (h) {#3};
-				\else
-					\node[below left] at (h) {#3};
-				\fi
-			\else
-				\ifnum#5<0
-					\node[above right] at (h) {#3};
-				\else
-					\node[above left] at (h) {#3};
-				\fi
-			\fi
-		\end{tikzpicture}
-	\end{center}
-}
 
 % Trigonometric Triangle
-\newcommand{\trigtri}[6]{
-		\begin{center}
-			\begin{tikzpicture}[scale={3/#3}]
-				\draw (0,0) coordinate (a) -- (#2,0) coordinate (b) node [midway, below] {#2} -- ({#3*cos(#4)},{#3*sin(#4)}) coordinate(c) node [midway, right] {#1}  -- node [midway, above left] {#3} cycle;
-				\pic [draw, -, "$#6\degree$", angle eccentricity=1.7] {angle=a--c--b};
-				\pic [draw, -, "$#4\degree$", angle eccentricity=1.7] {angle=b--a--c};
-				\pic [draw, -, "$#5\degree$", angle eccentricity=1.7] {angle=c--b--a};
-			\end{tikzpicture}
-	\end{center}}
 
 \newcommand{\fig}[4][0.4]{
     \begin{figure}[hbtp]
@@ -160,5 +121,6 @@
 \cs_set_protected:Npn \__numerica_mapping_function:n #1 { \prop_gput:Nnn \g__nmc_subst_fpfn_prop {#1} {}}
 \seq_map_function:NN \l_empty_fn_seq \__numerica_mapping_function:n
 \seq_map_inline:Nn \l_empty_fn_seq {\prop_gput:Nnn \g__nmc_class_prop {#1} { \__nmc_fpify_unarybrace: \__nmc_delim_unarybrace: } }
-
+\__nmc_fill_class:nn { \df }
+  { \__nmc_fpify_frac: \__nmc_delim_frac: }
 \ExplSyntaxOff

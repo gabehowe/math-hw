@@ -1,6 +1,7 @@
 # vim: foldmethod=marker foldlevel=1
 # t for text options, e for environments, ; for characters (automatic), : for math functions (automatic)
 global !p
+import time
 def math():
 	ismath = int(vim.eval('vimtex#syntax#in_mathzone()')) > 0
 	return ismath
@@ -8,16 +9,68 @@ def math():
 def fig():
 	isfig = int(vim.eval(f'vimtex#syntax#in("texTikzZone", line("."), col("."))')) > 0
 	return isfig
+
+def math_ds(snip):
+    # Only act after jumping away from a tabstop (not on initial expansion)
+    if snip.tabstop == 0:
+        return
+
+    # Get the current tabstop value
+    current_value = snip.tabstops[snip.tabstop].current_text
+
+    # Wrap with $ if not already wrapped
+    if current_value and not (current_value.startswith('$') and current_value.endswith('$')):
+        snip.tabstops[snip.tabstop].current_text = f'${current_value}$'
+
+def create_matrix_placeholders(snip):
+	time.sleep(1e-6)
+	# Create anonymous snippet body
+	anon_snippet_body = ""
+
+	# Get start and end line number of expanded snippet
+	start = snip.snippet_start[0]
+	end = snip.snippet_end[0]
+
+  # Append current line into anonymous snippet
+	for i in range(start, end + 1):
+		anon_snippet_body += snip.buffer[i]
+		anon_snippet_body += "" if i == end else "\n"
+
+	# Delete expanded snippet line till second to last line
+	for i in range(start, end):
+		del snip.buffer[start]
+
+	# Empty last expanded snippet line while preserving the line
+	snip.buffer[start] = ''
+
+	# Expand anonymous snippet
+	snip.expand_anon(anon_snippet_body)
+
+def create_matrix(cols, rows, sep, start, end):
+	res = ""
+	placeholder = 1
+	for _ in range(0, int(rows)):
+		res += start + f"${placeholder} "
+		placeholder += 1
+		for _ in range(0, int(cols) - 1):
+			res += sep + f" ${placeholder} "
+			placeholder += 1
+		res += end
+	return res[:-1]
 endglobal
 
-# text formatting 1{{{
+# text formatting {{{
 
 snippet pr "Parentheses" i
-\paren{$1}$0
+\pr{$1}$0
 endsnippet
 
 snippet bk "Brackets" i
 \brk{$1}$0
+endsnippet
+
+snippet cl "Brackets" i
+\crl{$1}$0
 endsnippet
 
 snippet tu "The underline command for underlined text"
@@ -38,60 +91,107 @@ snippet tb "Bold text"
 \textbf{$1}$0
 endsnippet
 
+snippet ti "Italic text"
+\textit{$1}$0
+endsnippet
+
 snippet tr "Red text"
 {\color{red}$1}$0
 endsnippet
 
 context "math()"
 snippet tt "Text in math mode" i
-\text{$1}
+\intertext{$1}
 endsnippet
+
 
 snippet tt "Term"
 \term{$1}{$2}$0
 endsnippet
-
-# environments 1{{{
+# }}}
+# environments {{{
 snippet e "environment"
 \begin{$1}
 	$0
 \end{$1}
 endsnippet
 
-snippet em "math environment" 
-{\$$1\$$0}
+post_jump "create_matrix_placeholders(snip)"
+msnippet "(.*)m(\d+)x(\d+)" "bmatrix nxm" bri
+`!p snip.rv = match.group(1)`
+\begin{bmatrix}
+`!p
+snip.rv = create_matrix(match.group(3), match.group(2), "&", "\t", "\\\\\\\\\n")
+`
+\end{bmatrix}$0
 endsnippet
 
 snippet emhwt "The math homework template"
 %! Author = gabri
+%! Created = `!v strftime('%F')`
 
 % Preamble
 \documentclass[11pt]{homework}
 
 % Packages
 
-\title{Math Homework}
+\title{}
 \author{Gabriel Howe}
-\date{\today}
-\class{$1}
+\date{`!v strftime('%B %-d, %Y')`}
+\class{`!v expand("%:t:r")`}
+\colorseed{`!p 
+if not snip.c:
+	snip.rv = str(__import__('random').randint(1, 50000))
+else: 
+	snip.rv = snip.c
+`}
 
 % Document
 \begin{document}
-    \maketitle
-	\begin{multicols*}{2}
-	$2
-	\end{multicols*}
+	$0
 \end{document}
 endsnippet
-snippet ec "The center environment for centered text"
+snippet emlat "The MLA template"
+%! Author = gabri
+%! Created = `!v strftime('%F')`
+\documentclass{mla}
+
+\usepackage{amsmath}
+%\addbibresource{.bib}
+
+\title{$0}
+\author{Gabriel}{Howe}
+\date{`!v strftime('%-d %B, %Y')`}
+\professor{$1}
+
+\class{`!v expand("%:t:r")`}
+\begin{document}
+	$2
+\end{document}
+
+endsnippet
+snippet ec "The center environment for centered text" i 
 \begin{center}
 	$1
 \end{center}
 endsnippet
-snippet eg "The gather environment for math text"
+
+snippet eg "The gather environment for math text" i 
 \begin{gather*}
-	$1
+	$0
 \end{gather*}
+endsnippet
+
+snippet ea "The align environment for math text" i
+\begin{align}
+	$0
+\end{align}
+endsnippet
+
+snippet eu "The unstarred align environment for math text" i
+\begin{align*}
+	$0
+\end{align*}
 endsnippet
 
 snippet en "Enumerate"
@@ -101,20 +201,20 @@ snippet en "Enumerate"
 endsnippet
 
 snippet ef "The environment for tikz"
-\begin{center}
+\begin{figure}[H]
 	\begin{tikzpicture}
 		$1
 	\end{tikzpicture}
-\end{center}
+\end{figure}
 endsnippet
 snippet eax
-\begin{center}
+\begin{figure}[H]
 	\begin{tikzpicture}
 		\begin{axis}
 			$1
 		\end{axis}
 	\end{tikzpicture}
-\end{center}
+\end{figure}
 endsnippet
 snippet epx
 \begin{center}
@@ -128,7 +228,7 @@ endsnippet
 
 
 # }}}
-# tikz snippets 1{{{
+# tikz snippets {{{{{{
 context "fig()"
 snippet ;co "Coordinate" Ai
 ($1,$2) coordinate ($3)$0
@@ -144,56 +244,114 @@ snippet ;an "Angle" Ai
 \pic[draw, -, "$1", angle eccentricity = $2] {angle=$3--$4--$5};
 endsnippet
 
+#}}}/*}}}*/
+# characters {{{
+# logic {{{
+msnippet ;im "Implies" Ai
+\implies
+endsnippet
 
-# characters 1{{{
+msnippet ;tf "Therefore" Ai
+\therefore
+endsnippet
+
+msnippet ;bc "Because" Ai
+\because
+endsnippet
+ 
+msnippet ;eq "Equivalent" Ai
+\equiv
+endsnippet
+
+msnippet ;fa "For all" Ai
+\forall
+endsnippet
+
+msnippet ;ex "Exists" Ai
+\exists
+endsnippet
+msnippet ;md "Modulo" Ai
+\Mod
+endsnippet
+# }}}
+
 msnippet ;in "Infinity" Ai
 \infty
 endsnippet
-
+# greek {{{
 msnippet ;pi "Pi" Ai
 \pi
 endsnippet
+msnippet ;om "Omega" Ai
+\omega
+endsnippet
+msnippet ;th "Theta" Ai
+\theta
+endsnippet
+msnippet ;al "alpha" Ai
+\alpha
+endsnippet
+msnippet ;be "beta" Ai
+\beta
+endsnippet
+msnippet ;ga "gamma" Ai
+\gamma
+endsnippet
+msnippet ;lm "lambda" Ai
+\lambda
+endsnippet
+msnippet ;ta "tau" Ai
+\tau
+endsnippet
+# }}}
 
 msnippet ;dg "Degree" Ai
-\degree
+\dg
 endsnippet
 
 msnippet ;ap "Approximately equal to" Ai
 \approx
 endsnippet
 
-msnippet ;th "Theta" Ai
-\theta
-endsnippet
-msnippet ;al "Alpha" Ai
-\alpha
-endsnippet
 msnippet ;an "Angle" Ai
 \angle
 endsnippet
 
+#}}}
+# nonmath functions {{{
+snippet eqr "equation ref" i
+\eqref{$1}$0
+endsnippet
 
-# nonmath functions
+context "math()"
+snippet eqr "equation label" i
+\label{$1}$0
+endsnippet
+
+snippet ;qs "question" Ai
+\question{$1}{$2}$0
+endsnippet
 snippet ;qp "question part" Ai
 \qprt{$1}{$2}
 	$0
 endsnippet
 
-# physics functions
+#}}}
+# physics functions {{{
 msnippet ;ha "hat" Ai
 \hat{$1}$0
 endsnippet
 
-msnippet ;vn "vector notation" Ai
-\rvec{$1}$0
+msnippet ;vb "vector bold" Ai
+\vb{$1}$0
 endsnippet
 
-msnippet ;vb "vector brackets" Ai
-\langle $1 \rangle $0
+msnippet ;vn "vector notation" Ai
+\cvec{$1}$0
 endsnippet
 
 msnippet ;mag "Magnitude" Ai
-\lVert $1 \rVert $0
+\magn{$1}$0
 endsnippet
 
 msnippet ;dd "Derivative (Done)" Ai
@@ -204,21 +362,45 @@ msnippet ;dv "Derivative (verb)" Ai
 \dv{$1}$0
 endsnippet
 
-# math functions
-msnippet ;tf "text fraction" Ai
-\tefrac{$1}{$2}$0
+msnippet ;un "Unit" Ai
+\sunit{$1}$0
 endsnippet
 
-msnippet ;ex "scientific notation" Ai
+snippet ev; "Evaluate" Ai
+\eval[f=1]{$1}[3]$0
+endsnippet
+
+#}}}
+# math functions {{{
+msnippet :dt "Determinant" Ai
+\det $0
+endsnippet
+msnippet ;bi "Binomial coefficient" Ai
+\binom{$1}{$2}$0
+endsnippet
+
+msnippet ;pb "Probability" Ai
+\prob{$1}$0
+endsnippet
+
+#msnippet ;tf "fraction" Ai
+#\tefrac{$1}{$2}$0
+#endsnippet
+
+msnippet ;sc "scientific notation" Ai
 \times10^{$1}$0
 endsnippet
 
 msnippet ;df "dfrac" Ai
-\dfrac{$1}{$2}$0
+\df{$1}{$2}$0
 endsnippet
 
 msnippet ;cd "cdot" Ai
-\cdot
+\cdot $0
+endsnippet
+
+msnippet ;gd "gradient" Ai
+\nabla $0
 endsnippet
 
 msnippet ;nf "normal frac" Ai
@@ -230,24 +412,29 @@ msnippet ;sq "Square Root" Ai
 endsnippet
 
 msnippet :sg "Summation notation" Ai
-\sum_{n=$1}^{$2}$3
+\sum_{$1=$2}^{$3}$4
 endsnippet
 
 msnippet :lim "Limit" Ai
-\lim_{$1\to$2}$0
+\lim_{$1\to $2}$0
 endsnippet
 
-msnippet :in "integral" Ai
-\int_{$1}^{$2}$3
+msnippet :di "Definite integral" Ai
+\ii[$1][$2]{$3}{$4}$0
+endsnippet
+
+msnippet :ii "Indefinite integral" Ai
+\ii{$1}{$2}$0
+endsnippet
+msnippet :ie "Definite integration evaluation" Ai
+\brk{$1}_{$2}^{$3}$0
 endsnippet
 
 msnippet :pr "product" Ai
 \prod_{$1}^{$2}$3
 endsnippet
 
-msnippet :ac "arccos" Ai
-\arccos $0
-endsnippet
+# Trigonometric Functions {{{
 
 msnippet :co "cosine" Ai
 \cos $0
@@ -257,16 +444,8 @@ msnippet :si "sine" Ai
 \sin $0
 endsnippet
 
-msnippet :as "arcsin" Ai
-\arcsin $0
-endsnippet
-
 msnippet :ta "tangent" Ai
 \tan $0
-endsnippet
-
-msnippet :at "arctangent" Ai
-\arctan $0
 endsnippet
 
 msnippet :rt "reciprocal tangent" Ai
@@ -281,3 +460,24 @@ msnippet :rc "reciprocal cosine"  Ai
 \sec $0
 endsnippet
 
+msnippet :as "arcsin" Ai
+\arcsin $0
+endsnippet
+msnippet :ac "arccos" Ai
+\arccos $0
+endsnippet
+msnippet :at "arctangent" Ai
+\arctan $0
+endsnippet
+msnippet :art "inverse reciprocal tangent" Ai
+\arccot $0
+endsnippet
+msnippet :ars "inverse reciprocal sine"  Ai
+\arccsc $0
+endsnippet
+msnippet :arc "inverse reciprocal cosine"  Ai
+\arcsec $0
+endsnippet
+
+	#}}}
+#}}}

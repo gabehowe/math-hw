@@ -21,101 +21,158 @@
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{amsart}}
 \ProcessOptions\relax
 \PassOptionsToPackage{approx}{numerica}
-\LoadClass[\hw@ptsize, \hw@side]{amsart}
+\PassOptionsToPackage{=v2}{siunitx}
+\PassOptionsToPackage{bookmarksopen=true,bookmarks=true}{hyperref}
+\PassOptionsToPackage{explicit}{titlesec}
+\LoadClass[\hw@ptsize, \hw@side, reqno]{amsart}
 \RequirePackage[margin=0.5in]{geometry}
 \RequirePackage{lmodern, enumitem, needspace} % needspace for dynamic line breaking
 \RequirePackage{ifthen, titlesec, framed, textcomp, gensymb}
+\RequirePackage{datetime, titleref, linegoal}
+
 \RequirePackage{siunitx, setspace}
 \RequirePackage{physics, numerica}
 \RequirePackage{hwsymb, hwlst, hwcmd} % tashfeen's
-\RequirePackage{hyperref} % for pdf bookmarks, other information and org-mode
-\RequirePackage{tikz, amsmath, etoolbox, atveryend}
+\RequirePackage{hyperref, bookmark} % for pdf bookmarks, other information and org-mode
+\RequirePackage{tikz, amsmath, etoolbox, atveryend, float, fancyhdr}
+\mathtoolsset{showonlyrefs}
 
-\AtBeginEnvironment{align}{\setcounter{equation}{0}}
-\AtBeginEnvironment{gather}{\setcounter{equation}{0}}
 
-\listxadd{\questionslist}{}
-% Quality Control checker
-\newcounter{questions}
-\setcounter{questions}{0}
-\newcounter{listcountercounter}
-\newcommand{\listcount}[1]{
-	\setcounter{listcountercounter}{0}
-	\renewcommand{\do}[1]{\stepcounter{listcountercounter}}
-	\dolistloop{#1}
-	\arabic{listcountercounter}
+\ExplSyntaxOn
+\clist_new:N \l_hw_questions_clist
+\int_new:N \l_hw_int_total_questions
+\bool_const:Nn \l_runquestionchecker_bool {\c_true_bool}
+
+\NewDocumentCommand \skipquestioncheck {}{
+ \bool_set_false:N \l_runquestionchecker_bool
 }
-\def \questioncheckershouldrun{1}
-\newcommand{\skipquestioncheck}{ \def \questioncheckershouldrun{0} }
+
 \AtEndDocument{
-    \ifnum\questioncheckershouldrun=1\relax%
-	\ifdef{\questionslist}{
-	\texttt{\small \color{red} \listcount{\questionslist}/\arabic{questions} questions
-	\renewcommand{\do}[1]{#1 }
-	(\dolistloop{\questionslist})
-	remain unchecked.
-}}{}
-  \fi
+	\vfill
+	\noindent{\color{gray}\scriptsize~Last~Modified:~\today\space at~\currenttime\qquad}
+    \bool_if:NT \l_runquestionchecker_bool {
+      \texttt{ \scriptsize \color{red} {
+      \clist_count:N \l_hw_questions_clist}/{\int_use:N \l_hw_int_total_questions}~questions~({\clist_use:Nn \l_hw_questions_clist {,}})~remain~unchecked.
+      }
+    }
 }
 
+\str_new:N \l_hw_author_str
+\str_new:N \l_hw_class_str
+\int_new:N \l_hw_colorseed_int
 
+\DeclareDocumentCommand\author{m}{ \str_set:Nn \l_hw_author_str {#1} }
+\DeclareDocumentCommand\class{m}{ \str_set:Nn \l_hw_class_str {#1} }
+\DeclareDocumentCommand\colorseed{m}{ \int_set:Nn \l_hw_colorseed_int {#1}
+ }
+\NewDocumentCommand{\setupnewcolors}{m}{%
+  \sys_gset_rand_seed:n #1
+  \int_new:N \l_my_stylehue
+  \int_set:Nn \l_my_stylehue {\int_rand:nn {0} {240}}
+  \definecolor{style_color}{HSB}{\int_eval:n \l_my_stylehue,240,240}
+  \color_set:nnn {style0}{HSB}{\int_eval:n \l_my_stylehue, 240, 240}
+  \color_set_eq:nn {style_color}{style0}
 
-\hypersetup {
-  pdfstartview=FitH,
-  colorlinks=true
+  \int_step_inline:nn {6}{
+    \color_set:nnn {style##1}{HSB}{\int_eval:n {\int_mod:nn {\l_my_stylehue + ##1*7}{240}},240,240}
+    \color_export:nnN {style##1}{comma-sep-rgb} \l_tmpa_tl
+    \definecolor{style##1}{rgb}{\tl_use:N \l_tmpa_tl}
+    }
+  \int_step_inline:nn {6}{
+    \color_set:nnn{bstyle##1}{HSB}{\int_eval:n {\int_mod:nn {\l_my_stylehue - ##1*7 + 240}{240}},240,240}
+    \color_export:nnN {bstyle##1}{comma-sep-rgb} \l_tmpa_tl
+    \definecolor{bstyle##1}{rgb}{\tl_use:N \l_tmpa_tl}
+  }
 }
 
-\gdef\@author{\empty}
-\gdef\@class{\empty}
-\gdef\@honor{On my honor I have neither given nor received unauthorized assistance on this assignment.}
-\gdef\@colorseed{0}
-\newcommand{\class}[1]{\gdef\@class{#1}}
-\renewcommand{\author}[1]{\gdef\@author{#1}}
-\newcommand{\honor}[1]{\gdef\@honor{#1}}
-\newcommand{\colorseed}[1]{\gdef\@colorseed{#1}}
+\RenewDocumentCommand{\headrule}{}{
+  \skip_vertical:n {-0.6em}
+  \hbox_to_wd:nn {\headwidth}{
+    \tikz{\draw[color=style_color,dashdotted, line~width=1.1pt] (0,0)--(\headwidth,0);}}
+  \skip_vertical:n {-0.8em}
+}
 
-
-\def\styleColor{style_color!60}
-
-\titleformat{name=\section}[block]{\bf\large\filcenter}{\thesection}{1em}{}
-\titleformat{name=\section,numberless}[block]{\color{black!80}\bf\slshape\large}{}{0.1em}{}[\color{\styleColor}\vspace{-\baselineskip + 4.5pt}\rule{.25\linewidth}{0.3pt}\vspace{-4pt}]
-\titleformat{name=\subsection,numberless}[block]{\bf\normalsize\filcenter}{}{0.1em}{\underline}
-\titleformat{name=\subsubsection,numberless}[block]{\normalfont\normalsize\filcenter}{}{0.1em}{}
+\fancypagestyle{firstpage}{
+  \cfoot{}
+  \lhead{
+    \noindent\str_if_empty:NF \l_hw_author_str {\l_hw_author_str}
+  }
+  \rhead{
+    \raggedleft
+    \noindent\@date\par
+    \noindent\str_if_empty:NF \l_hw_class_str {\l_hw_class_str}
+  }
+  \setlength{\headheight}{0.5in}
+}
 
 \AtBeginDocument{
   \hypersetup {
     pdftitle={\@title},
-    pdfauthor={\@author},
-    pdfsubject={\@class}
+    pdfauthor={\l_hw_author_str},
+    pdfsubject={\l_hw_class_str}
+    pdfstartview=FitH,
   }
-
+ \setupnewcolors{\l_hw_colorseed_int}
+ \thispagestyle{firstpage}
+}
+\NewDocumentCommand\bottomrule{m}{
+  {\color{#1}\vspace{-\baselineskip + 4.5pt}\rule{\linewidth}{0.3pt}\vspace{-4pt}}
 }
 
+\NewDocumentCommand\middlerule{mm}{
+  \unskip
+  {
+    \color_select:n {#2}
+    \rule[0.5ex - 0.4pt]{1em}{0.4pt}
+  }
+  \skip_horizontal:n {0.3em}
+  #1
+  \skip_horizontal:n {0.3em}
+  {
+    \color_select:n {#2}
+    \rule[0.5ex - 0.4pt]{\linegoal}{0.4pt}
+  }
+}
 
-\ExplSyntaxOn
-\cs_new_eq:NN \setrandomseed \sys_gset_rand_seed:n
+\RenewDocumentCommand{\maketitle}{}{{
+    \thispagestyle{firstpage}
+  \mode_leave_vertical: 
+  \skip_vertical:n {0em}
+  \noindent\hfill\bf\large{\uppercasenonmath\@title\@title}\hfill
+
+  \uppercasenonmath\shorttitle
+  \begingroup
+  \toks@\@xp{\shortauthors}\@temptokena\@xp{\shorttitle}%
+  \toks4{\def\\{ \ignorespaces}}% defend against questionable usage
+  \edef\@tempa{%
+    \@nx\markboth{\the\toks4
+      \@nx\MakeUppercase{\the\toks@}}{\the\@temptokena}}%
+  \@tempa
+  \endgroup
+}}
+%\def\maketitle{\par
+  %%\@topnum\z@ % this prevents figures from falling at the top of page 1
+  %%\@setcopyright
+  %\thispagestyle{firstpage}% this sets first page specifications
+  %%\uppercasenonmath\shorttitle
+  %%\ifx\@empty\shortauthors \let\shortauthors\shorttitle
+  %%\else \andify\shortauthors
+  %%\fi
+  %%\@maketitle@hook
+%}
+
 \ExplSyntaxOff
-\renewcommand{\maketitle} {%
-\setrandomseed{\@colorseed}
-\definecolor{style_color}{HSB}{\fpeval{randint(0,240)},240,240}
-  \noindent
-  \begin{minipage}{0.80\textwidth}
-  \noindent\ifthenelse{\equal{\@author}{\empty}}{}{\@author\par}%
-  \noindent\ifthenelse{\equal{\@honor}{\empty}}{}{\@honor\par}%
-\end{minipage}
-\noindent
-\begin{minipage}{.19\textwidth}
-  \raggedleft
-  \noindent\@date\par
-  \noindent\ifthenelse{\equal{\@date}{\today}}{C: \today\par}{}
-  \noindent\ifthenelse{\equal{\@class}{\empty}}{}{\@class\par}%
-\end{minipage}
-\ifthenelse{\equal{\@title}{\empty}}{}{\\\vspace{\medskipamount}}%
-  \begin{center}\unskip%
-    \textbf{\ifthenelse{\equal{\@title}{\empty}}{
-    \\{\vspace{-\baselineskip +1.5pt}\color{\styleColor}\rule{0.98\textwidth}{1pt}\vspace{3pt - \baselineskip}}\\
-}{\@title\vspace{-5pt}\\}}%
-  \end{center}%
-  \addvspace{1.9\bigskipamount}%
-}
 
+
+\def\styleColor{style_color!80}
+
+\def\currtitle{\ttl@savetitle}
+\numberwithin{equation}{section}
+\titleformat{name=\section}[block]{\bf\large\filcenter}{\thesection#1}{1em}{}
+\titleformat{name=\section,numberless}[block]{\bf\large}{\middlerule{#1}{style0!80}}{-0.1em}{}[{\phantomsection\setcounter{equation}{0} \bookmark[dest=\HyperLocalCurrentHref, level=section]{\ttl@savetitle}}]
+\renewcommand{\theequation}{\currtitle.\arabic{equation}}
+\titleformat{name=\subsection,numberless}[block]{\normalsize\slshape}{\middlerule{#1}{bstyle4!80}}{-0.15em}{}
+\titleformat{name=\subsubsection,numberless}[block]{\normalfont\normalsize\filcenter}{#1}{-0.15em}{}
+\titlespacing{name=\section,numberless}{0pt}{0.5em}{0pt}
+\titlespacing{name=\subsection,numberless}{0pt}{0pt}{0pt}
+\titlespacing{name=\subsubsection,numberless}{0pt}{0pt}{0pt}
